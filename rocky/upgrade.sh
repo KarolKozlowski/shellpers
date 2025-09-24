@@ -20,6 +20,8 @@ dnf install "${REPO_URL}/${RELEASE_PKG}" \
 
 dnf install "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${ROCKY_RELEASE}.noarch.rpm"
 
+rpm --import https://duo.com/DUO-GPG-PUBLIC-KEY.asc
+
 rm "${PKG_LIST}"
 
 for item in ${BACKUPS[*]}; do
