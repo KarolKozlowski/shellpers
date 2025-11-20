@@ -5,7 +5,7 @@ ROCKY_RELEASE=9
 REPO_URL="https://download.rockylinux.org/pub/rocky/${ROCKY_RELEASE}/BaseOS/x86_64/os/Packages/r"
 PKG_LIST="/tmp/rocky-${ROCKY_RELEASE}-pkg.txt"
 
-curl -sS -L "${REPO_URL}" | grep href | sed 's/.*href=\(".*"\).*/\1/' > "${PKG_LIST}"
+curl -sS -L "${REPO_URL}" | grep href | sed 's/.*href="\(.*\)".*/\1/' > "${PKG_LIST}"
 
 RELEASE_PKG=$(grep rocky-release "${PKG_LIST}" | head -n 1)
 REPOS_PKG=$(grep rocky-repos "${PKG_LIST}" | head -n 1)
