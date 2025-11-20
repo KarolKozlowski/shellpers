@@ -1,0 +1,13 @@
+#!/bin/bash
+
+rand=0
+dev=${1:-30}
+
+echo "Using deviation: ${dev}"
+
+while sleep $rand
+do
+  rand=$((${dev}*${RANDOM}/32767))
+  echo $rand
+done
+
