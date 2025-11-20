@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# SSH Connector
+# Detects if there is a direct connection to host and if not tries to use proxy.
+
+# Usage:
+# 1. place the file in ~/bin/ssh_connector
+# 2. Edit your ~/.ssh/config and add:
+# Host example.com
+#   ProxyCommand ~/bin/ssh_connector %h %p
+
+netcat=/bin/nc
+timeout=4
+
+desthost=$1
+destport=$2
+
+detect_proxy() {
+  # TODO: use multiple proxies
+  proxyhost=`echo ${http_proxy} | cut -d "/" -f 3 | cut -d ":" -f 1`
+  proxyport=`echo ${http_proxy} | cut -d "/" -f 3 | cut -d ":" -f 2`
+  proxymeth=`echo ${http_proxy} | cut -d ":" -f 1`
+  [ "x${proxymeth}" = "xhttp"   ] && proxymeth=connect
+  [ "x${proxymeth}" = "xsocks*" ] && proxymeth=5
+  [ "x${proxymeth}" = "xsocks4" ] && proxymeth=4
+}
+
+direct_connection() {
+  if ${netcat} -w ${timeout} -z ${desthost} ${destport}
+  then
+     [ -n "$debug" ] && echo "Using direct connection." >&2
+    return 0
+  fi
+   [ -n "$debug" ] && echo "Direct connection failed, trying proxy." >&2
+  return 1
+}
+
+if direct_connection
+then
+  # use direct connection if possible (via netcat)
+  exec ${netcat} ${desthost} ${destport}
+else
+  # use netcat with proxy when direct connection is not possible
+  detect_proxy
+  exec ${netcat} ${desthost} ${destport} -X ${proxymeth} -x ${proxyhost}:${proxyport}
+fi
+
