@@ -28,10 +28,10 @@ detect_proxy() {
 direct_connection() {
   if ${netcat} -w ${timeout} -z ${desthost} ${destport}
   then
-     [ -n "$debug" ] && echo "Using direct connection." >&2
+    [ -n "$debug" ] && echo "Using direct connection." >&2
     return 0
   fi
-   [ -n "$debug" ] && echo "Direct connection failed, trying proxy." >&2
+    [ -n "$debug" ] && echo "Direct connection failed, trying proxy." >&2
   return 1
 }
 
