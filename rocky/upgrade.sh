@@ -15,8 +15,8 @@ REPOS_PKG=$(grep rocky-repos "${PKG_LIST}" | head -n 1)
 GPG_KEYS_PKG=$(grep rocky-gpg-keys "${PKG_LIST}" | head -n 1)
 
 dnf install "${REPO_URL}/${RELEASE_PKG}" \
-            "${REPO_URL}/${REPOS_PKG} \
-            "${REPO_URL}/${GPG_KEYS_PKG}
+            "${REPO_URL}/${REPOS_PKG}" \
+            "${REPO_URL}/${GPG_KEYS_PKG}"
 
 rm "${PKG_LIST}"
 
