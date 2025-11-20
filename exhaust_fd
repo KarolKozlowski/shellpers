@@ -1,0 +1,36 @@
+#!/usr/bin/python
+
+import os
+import itertools
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option("-l", "--limit", dest="fds", type="int", default=0,
+                  help="How many file descriptors to leave.", metavar="FDS")
+parser.add_option("-c", "--command", dest="cmd", type="string", default="/bin/bash",
+                  help="Command to run.")
+
+(options, args) = parser.parse_args()
+
+handles = []
+
+try:
+  while True:
+    handles.append(open('/dev/null', 'r'))
+except IOError:
+  print "File descriptors exhausted."
+  pass
+
+print "Freeing {0} file descriptors.".format(options.fds)
+
+for f in itertools.islice(handles, 0, options.fds):
+  f.close()
+
+print "Starting {0}.".format(options.cmd)
+os.system('/bin/bash')
+
+print "Closing remaining file descriptors."
+
+for f in handles:
+  f.close()
+
