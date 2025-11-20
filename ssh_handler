@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# SSH Handler
+# Handles ssh:// links using.
+#
+# Usage:
+# 1. Place the file in ~/bin/ssh_handler
+# 2. Set it as a protocol handler in your browser.
+#
+# Firefox:
+# network.protocol-handler.external.ssh=true
+# network.protocol-handler.app.ssh=~/bin/ssh_handler
+
+notifier=/usr/bin/notify-send
+terminal=/usr/bin/gnome-terminal
+
+netcat=/bin/nc
+timeout=1
+
+notify_summary="SSH Handler"
+
+notify() {
+  if [ -x ${notifier} ]; then
+    ${notifier} "${notify_summary}" "$@"
+  else
+    echo "${notify_summary}: $@"
+  fi
+}
+
+test_connection() {
+  [ "$protocol" = 'ssh' ] && port=22
+
+  message=`${netcat} -w ${timeout} -z ${hostname} ${port} 2>&1`
+  ret_val=$?
+  if [ $ret_val -ne 0 ]; then
+    notify "Could not connect to ${hostname}: ${message}"
+    exit 1
+  fi
+}
+
+protocol=`echo $1 | cut -d: -f1`
+hostname=`echo $1 | cut -d/ -f3`
+
+
+test_connection
+
+if [ "${protocol}" != "ssh" ]; then
+  notify "Invalid protocol: ${protocol}"
+  exit 1
+fi
+
+notify "Connecting to ${hostname}"
+
+${terminal} -e "${protocol} ${hostname}" &
+
