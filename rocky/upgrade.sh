@@ -18,6 +18,8 @@ dnf install "${REPO_URL}/${RELEASE_PKG}" \
             "${REPO_URL}/${REPOS_PKG}" \
             "${REPO_URL}/${GPG_KEYS_PKG}"
 
+dnf install "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${ROCKY_RELEASE}.noarch.rpm"
+
 rm "${PKG_LIST}"
 
 for item in ${BACKUPS[*]}; do
