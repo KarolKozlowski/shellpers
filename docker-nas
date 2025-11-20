@@ -1,0 +1,6 @@
+#!/bin/sh
+
+export DOCKER_HOST=tcp://nas.np.dotnot.pl:2376
+export DOCKER_TLS_VERIFY=1
+export DOCKER_CERT_PATH=~/.docker/nas.np.dotnot.pl/
+/usr/bin/docker "$@"
