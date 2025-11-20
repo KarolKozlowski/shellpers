@@ -1,0 +1,7 @@
+#!/bin/sh
+
+windows_root_location='c:\Users\'${USER}'\AppData\Local\Packages\CanonicalGroupLimited.UbuntuonWindows_79rhkp1fndgsc\LocalState\rootfs'
+pwd=$(echo -n $PWD | sed 's.\/.\\.g')
+
+printf '%s' ${windows_root_location}${pwd}
+
