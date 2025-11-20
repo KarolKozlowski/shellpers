@@ -23,6 +23,10 @@ detect_proxy() {
   [ "x${proxymeth}" = "xhttp"   ] && proxymeth=connect
   [ "x${proxymeth}" = "xsocks*" ] && proxymeth=5
   [ "x${proxymeth}" = "xsocks4" ] && proxymeth=4
+  [ -n "$debug" ] && echo "Detected proxy:" >&2
+  [ -n "$debug" ] && echo " - host: ${proxyhost}" >&2
+  [ -n "$debug" ] && echo " - port: ${proxyport}" >&2
+  [ -n "$debug" ] && echo " - method: ${proxymeth}" >&2
 }
 
 direct_connection() {
