@@ -1,0 +1,2 @@
+#!/bin/sh
+docker-nas exec -it squid squid -k reconfigure

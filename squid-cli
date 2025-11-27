@@ -1,0 +1,12 @@
+user=admin
+pass=${SQUID_PASSWORD}
+host=proxy.np.dotnot.pl
+
+if [ $# -eq 0 ]; then
+  # no positional arguments given
+   squidclient -u "${user}" -w "${pass}" -h proxy.np.dotnot.pl mgr:info
+else
+  # pass all positional arguments as is
+  squidclient -u "${user}" -w "${pass}" -h proxy.np.dotnot.pl "$@"
+fi
+
