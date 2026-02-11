@@ -1,0 +1,6 @@
+#!/bin/bash
+while sleep 60; do
+  date
+  xdotool mousemove_relative 1 1
+  xdotool mousemove_relative -- -1 -1
+done
