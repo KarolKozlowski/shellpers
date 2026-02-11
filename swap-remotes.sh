@@ -1,32 +1,38 @@
 #!/bin/bash
 set -e  # Exit on error
 
-# Check if both remotes exist (literal grep)
-if ! git remote | grep -F '^origin$' >/dev/null || ! git remote | grep -F '^dotnot$' >/dev/null; then
+echo "Debug: git remote output:"
+git remote
+
+# Check remotes exist (word match, ignores whitespace)
+if ! git remote | grep -qw '^origin$' || ! git remote | grep -qw '^dotnot$'; then
   echo "ERROR: missing origin or dotnot remote"
   exit 1
 fi
 
-# Check if origin points to GitHub
-origin_url=$(git remote get-url origin 2>/dev/null || true)
+# Confirm origin is GitHub
+origin_url=$(git remote get-url origin)
 if [[ ! "$origin_url" =~ github ]]; then
-  echo "ERROR: origin not GitHub ($origin_url)"
+  echo "ERROR: origin not GitHub: $origin_url"
   exit 1
 fi
 
+dotnot_url=$(git remote get-url dotnot)
 current_branch=$(git branch --show-current)
-echo "Swapping origin<->dotnot (origin: $origin_url, branch: $current_branch)"
+echo "✅ Swapping origin<->dotnot"
+echo "  origin  → github:  $origin_url"
+echo "  dotnot  → origin:  $dotnot_url"
+echo "  branch: $current_branch"
 
 git remote rename origin github
 git remote rename dotnot origin
 git remote prune github origin 2>/dev/null || true
 
-# Set upstream for current branch
 git branch --set-upstream-to="origin/$current_branch"
 
-echo "✅ Done!"
-echo "Remotes:"
-git remote -v | head -4
+echo "✅ Complete!"
+echo "Final remotes:"
+git remote -v
 echo "Tracking:"
-git branch -vv | grep -F '*' | awk '{print $1, $4}'
+git branch -vv | head -1
 
