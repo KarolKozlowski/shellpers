@@ -1,0 +1,12 @@
+#!/bin/sh
+
+echo 'basic command:'
+echo '  ffmpeg -i input.mp4 -c:a copy -c:v hevc_nvenc output.mp4'
+echo 'hwaccel_output_format cuda option keeps decoded frames in GPU memory:'
+echo '  ffmpeg -hwaccel cuda -i input.mp4 -c:v hevc_nvenc -cq 23 -c:a copy output.mp4'
+echo 'quiality control:'
+echo '  ffmpeg -hwaccel cuda -i input.mp4 -c:v hevc_nvenc -preset p7 -cq 23 -c:a copy output.mp4'
+echo 'preset selection:'
+echo '  ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i input.mp4 -c:a copy -c:v hevc_nvenc output.mp4'
+
+docker-nas run -it --rm -v /share/media:/media --gpus=all --entrypoint=/bin/bash ghcr.io/haveagitgat/tdarr_node:latest
