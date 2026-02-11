@@ -1,0 +1,14 @@
+#!/bin/sh
+
+export DOCKER_HOST=tcp://nas.np.dotnot.pl:2376
+export DOCKER_TLS_VERIFY=1
+export DOCKER_CERT_PATH=~/.docker/nas.np.dotnot.pl/
+
+container="postgres"
+
+# If no args provided, default to homeassistant database
+if [ $# -eq 0 ]; then
+  /usr/bin/docker exec -it "${container}" psql -U postgres -d postgres
+else
+  /usr/bin/docker exec -it "${container}" psql -U postgres "$@"
+fi
