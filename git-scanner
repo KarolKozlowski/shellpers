@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+import os
+import sys
+import json
+import argparse
+import subprocess
+from pathlib import Path
+
+CACHE_FILE = Path.home() / ".git-scanner.json"
+
+def load_cache():
+    """Loads the cached repository paths from the JSON file."""
+    if CACHE_FILE.exists():
+        try:
+            with open(CACHE_FILE, "r") as f:
+                return set(json.load(f))
+        except json.JSONDecodeError:
+            return set()
+    return set()
+
+def save_cache(repos):
+    """Saves the repository paths to the JSON cache file."""
+    with open(CACHE_FILE, "w") as f:
+        json.dump(sorted(list(repos)), f, indent=2)
+
+def scan_for_repos(start_dir, ignore_dirs):
+    """Walks the directory tree looking for .git folders."""
+    found_repos = set()
+    start_path = Path(start_dir).resolve()
+    
+    if not start_path.is_dir():
+        print(f"Error: {start_dir} is not a valid directory.")
+        return found_repos
+
+    for root, dirs, files in os.walk(start_path):
+        # Modify the dirs list in-place to skip ignored directories
+        dirs[:] = [d for d in dirs if d not in ignore_dirs]
+        
+        if '.git' in dirs:
+            found_repos.add(str(root))
+            # Don't traverse inside the .git directory itself
+            dirs.remove('.git')
+            
+    return found_repos
+
+def check_git_status(repo_path):
+    """Runs git status --porcelain to check for pending changes."""
+    repo = Path(repo_path)
+    if not repo.is_dir() or not (repo / '.git').exists():
+        return "invalid", None
+    
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        output = result.stdout.strip()
+        if output:
+            return "dirty", output
+        else:
+            return "clean", None
+    except subprocess.CalledProcessError:
+        return "error", None
+    except Exception:
+        return "error", None
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Scan and report status of git repositories.",
+        prog="git-scanner"
+    )
+    parser.add_argument(
+        "--scan", 
+        type=str, 
+        help="Directory to scan for new git repositories", 
+        metavar="DIR"
+    )
+    parser.add_argument(
+        "--ignore", 
+        nargs="*", 
+        default=[], 
+        help="Directories to ignore during scan (e.g., node_modules venv)", 
+        metavar="DIR"
+    )
+    parser.add_argument(
+        "-v", "--verbose", 
+        action="store_true", 
+        help="Show verbose output of git status for dirty repositories"
+    )
+    
+    parser.add_argument(
+        "-a", "--all", 
+        action="store_true", 
+        help="Show all repositories, including clean ones"
+    )
+    
+    args = parser.parse_args()
+    repos = load_cache()
+    
+    # Handle Scanning
+    if args.scan:
+        ignore_msg = f" (ignoring: {', '.join(args.ignore)})" if args.ignore else ""
+        print(f"Scanning {args.scan}{ignore_msg}...")
+        
+        new_repos = scan_for_repos(args.scan, args.ignore)
+        initial_count = len(repos)
+        repos.update(new_repos)
+        save_cache(repos)
+        
+        added = len(repos) - initial_count
+        print(f"Found {len(new_repos)} repositories. Added {added} new to cache.")
+        if not repos:
+            return
+        print("-" * 40)
+    
+    # Check if we have anything to report
+    if not repos:
+        print("No repositories in cache. Run with --scan <directory> to find some.")
+        return
+
+    # Check and report statuses
+    invalid_repos = set()
+    
+    for repo in sorted(repos):
+        status, output = check_git_status(repo)
+        
+        if status == "clean":
+            if args.all:
+                print(f"🟢 {repo}")
+        elif status == "dirty":
+            print(f"🔴 {repo}")
+            if args.verbose and output:
+                # Print the porcelain output indented for clarity
+                for line in output.splitlines():
+                    print(f"     {line}")
+        else:
+            print(f"⚠️  {repo} (Not a valid git repository or missing)")
+            invalid_repos.add(repo)
+            
+    # Auto-cleanup invalid repositories from cache
+    if invalid_repos:
+        print(f"\nRemoving {len(invalid_repos)} invalid/missing repositories from cache...")
+        repos.difference_update(invalid_repos)
+        save_cache(repos)
+
+if __name__ == "__main__":
+    main()
