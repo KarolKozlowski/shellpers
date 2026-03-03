@@ -9,19 +9,31 @@ from pathlib import Path
 CACHE_FILE = Path.home() / ".git-scanner.json"
 
 def load_cache():
-    """Loads the cached repository paths from the JSON file."""
+    """Loads the cached repository data from the JSON file."""
     if CACHE_FILE.exists():
         try:
             with open(CACHE_FILE, "r") as f:
-                return set(json.load(f))
+                data = json.load(f)
+                # Handle legacy format (simple list)
+                if isinstance(data, list):
+                    # Convert old format to new format
+                    return {path: {"ignore": False, "onScan": False} for path in data}
+                # New format (dict with metadata)
+                elif isinstance(data, dict):
+                    return data
         except json.JSONDecodeError:
-            return set()
-    return set()
+            return {}
+    return {}
 
 def save_cache(repos):
-    """Saves the repository paths to the JSON cache file."""
+    """Saves the repository data to the JSON cache file."""
     with open(CACHE_FILE, "w") as f:
-        json.dump(sorted(list(repos)), f, indent=2)
+        # repos is now a dict with path -> {ignore, onScan} metadata
+        if isinstance(repos, dict):
+            json.dump(repos, f, indent=2, sort_keys=True)
+        else:
+            # Fallback for old format
+            json.dump({path: {"ignore": False, "onScan": False} for path in sorted(repos)}, f, indent=2)
 
 def scan_for_repos(start_dir, ignore_dirs):
     """Walks the directory tree looking for .git folders."""
@@ -108,7 +120,15 @@ def main():
         
         new_repos = scan_for_repos(args.scan, args.ignore)
         initial_count = len(repos)
-        repos.update(new_repos)
+        
+        # Add new repos with onScan flag set to True
+        for repo_path in new_repos:
+            if repo_path not in repos:
+                repos[repo_path] = {"ignore": False, "onScan": True}
+            else:
+                # Preserve existing flags but update onScan to True
+                repos[repo_path]["onScan"] = True
+        
         save_cache(repos)
         
         added = len(repos) - initial_count
@@ -125,26 +145,31 @@ def main():
     # Check and report statuses
     invalid_repos = set()
     
-    for repo in sorted(repos):
-        status, output = check_git_status(repo)
+    for repo_path in sorted(repos.keys()):
+        # Skip ignored repositories
+        if repos[repo_path].get("ignore", False):
+            continue
+            
+        status, output = check_git_status(repo_path)
         
         if status == "clean":
             if args.all:
-                print(f"🟢 {repo}")
+                print(f"🟢 {repo_path}")
         elif status == "dirty":
-            print(f"🔴 {repo}")
+            print(f"🔴 {repo_path}")
             if args.verbose and output:
                 # Print the porcelain output indented for clarity
                 for line in output.splitlines():
                     print(f"     {line}")
         else:
-            print(f"⚠️  {repo} (Not a valid git repository or missing)")
-            invalid_repos.add(repo)
+            print(f"⚠️  {repo_path} (Not a valid git repository or missing)")
+            invalid_repos.add(repo_path)
             
     # Auto-cleanup invalid repositories from cache
     if invalid_repos:
         print(f"\nRemoving {len(invalid_repos)} invalid/missing repositories from cache...")
-        repos.difference_update(invalid_repos)
+        for repo_path in invalid_repos:
+            del repos[repo_path]
         save_cache(repos)
 
 if __name__ == "__main__":
