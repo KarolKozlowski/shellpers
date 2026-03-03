@@ -39,7 +39,7 @@ def scan_for_repos(start_dir, ignore_dirs):
     """Walks the directory tree looking for .git folders."""
     found_repos = set()
     start_path = Path(start_dir).resolve()
-    
+
     if not start_path.is_dir():
         print(f"Error: {start_dir} is not a valid directory.")
         return found_repos
@@ -47,12 +47,12 @@ def scan_for_repos(start_dir, ignore_dirs):
     for root, dirs, files in os.walk(start_path):
         # Modify the dirs list in-place to skip ignored directories
         dirs[:] = [d for d in dirs if d not in ignore_dirs]
-        
+
         if '.git' in dirs:
             found_repos.add(str(root))
             # Don't traverse inside the .git directory itself
             dirs.remove('.git')
-            
+
     return found_repos
 
 def check_git_status(repo_path):
@@ -60,7 +60,7 @@ def check_git_status(repo_path):
     repo = Path(repo_path)
     if not repo.is_dir() or not (repo / '.git').exists():
         return "invalid", None
-    
+
     try:
         result = subprocess.run(
             ["git", "status", "--porcelain"],
@@ -93,33 +93,33 @@ def main():
         metavar="PATH"
     )
     parser.add_argument(
-        "--scan", 
-        type=str, 
-        help="Directory to scan for new git repositories", 
+        "--scan",
+        type=str,
+        help="Directory to scan for new git repositories",
         metavar="DIR"
     )
     parser.add_argument(
-        "--ignore", 
-        nargs="*", 
-        default=[], 
-        help="Directories to ignore during scan (e.g., node_modules venv)", 
+        "--ignore",
+        nargs="*",
+        default=[],
+        help="Directories to ignore during scan (e.g., node_modules venv)",
         metavar="DIR"
     )
     parser.add_argument(
-        "-v", "--verbose", 
-        action="store_true", 
+        "-v", "--verbose",
+        action="store_true",
         help="Show verbose output of git status for dirty repositories"
     )
-    
+
     parser.add_argument(
-        "-a", "--all", 
-        action="store_true", 
+        "-a", "--all",
+        action="store_true",
         help="Show all repositories, including clean ones"
     )
-    
+
     args = parser.parse_args()
     repos = load_cache()
-    
+
     # Filter by path if provided
     if args.path:
         filter_path = Path(args.path).resolve()
@@ -134,15 +134,15 @@ def main():
                 # Skip paths that can't be resolved
                 continue
         repos = filtered_repos
-    
+
     # Handle Scanning
     if args.scan:
         ignore_msg = f" (ignoring: {', '.join(args.ignore)})" if args.ignore else ""
         print(f"Scanning {args.scan}{ignore_msg}...")
-        
+
         new_repos = scan_for_repos(args.scan, args.ignore)
         initial_count = len(repos)
-        
+
         # Add new repos with onScan flag set to True
         for repo_path in new_repos:
             if repo_path not in repos:
@@ -150,15 +150,15 @@ def main():
             else:
                 # Preserve existing flags but update onScan to True
                 repos[repo_path]["onScan"] = True
-        
+
         save_cache(repos)
-        
+
         added = len(repos) - initial_count
         print(f"Found {len(new_repos)} repositories. Added {added} new to cache.")
         if not repos:
             return
         print("-" * 40)
-    
+
     # Check if we have anything to report
     if not repos:
         print("No repositories in cache. Run with --scan <directory> to find some.")
@@ -166,14 +166,14 @@ def main():
 
     # Check and report statuses
     invalid_repos = set()
-    
+
     for repo_path in sorted(repos.keys()):
         # Skip ignored repositories
         if repos[repo_path].get("ignore", False):
             continue
-            
+
         status, output = check_git_status(repo_path)
-        
+
         if status == "clean":
             if args.all:
                 print(f"🟢 {repo_path}")
@@ -186,7 +186,7 @@ def main():
         else:
             print(f"⚠️  {repo_path} (Not a valid git repository or missing)")
             invalid_repos.add(repo_path)
-            
+
     # Auto-cleanup invalid repositories from cache
     if invalid_repos:
         print(f"\nRemoving {len(invalid_repos)} invalid/missing repositories from cache...")
