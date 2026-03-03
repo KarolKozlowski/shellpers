@@ -55,7 +55,7 @@ def scan_for_repos(start_dir, ignore_dirs):
 
     return found_repos
 
-def check_git_status(repo_path):
+def check_git_status(repo_path, ignore_untracked=False):
     """Runs git status --porcelain to check for pending changes."""
     repo = Path(repo_path)
     if not repo.is_dir() or not (repo / '.git').exists():
@@ -71,6 +71,14 @@ def check_git_status(repo_path):
             check=True
         )
         output = result.stdout.strip()
+        
+        # Filter out untracked files if requested
+        if ignore_untracked and output:
+            lines = output.splitlines()
+            # Keep only lines that don't start with '??' (untracked files)
+            filtered_lines = [line for line in lines if not line.startswith('??')]
+            output = '\n'.join(filtered_lines)
+        
         if output:
             return "dirty", output
         else:
@@ -115,6 +123,14 @@ def main():
         "-a", "--all",
         action="store_true",
         help="Show all repositories, including clean ones"
+    )
+
+    parser.add_argument(
+        "-u", "--show-untracked",
+        action="store_false",
+        dest="ignore_untracked",
+        default=True,
+        help="Show untracked files (by default untracked files are ignored)"
     )
 
     args = parser.parse_args()
@@ -172,7 +188,7 @@ def main():
         if repos[repo_path].get("ignore", False):
             continue
 
-        status, output = check_git_status(repo_path)
+        status, output = check_git_status(repo_path, ignore_untracked=args.ignore_untracked)
 
         if status == "clean":
             if args.all:
