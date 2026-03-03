@@ -86,6 +86,13 @@ def main():
         prog="git-scanner"
     )
     parser.add_argument(
+        "path",
+        nargs="?",
+        default=None,
+        help="Filter repositories by path (e.g., . for current directory)",
+        metavar="PATH"
+    )
+    parser.add_argument(
         "--scan", 
         type=str, 
         help="Directory to scan for new git repositories", 
@@ -112,6 +119,21 @@ def main():
     
     args = parser.parse_args()
     repos = load_cache()
+    
+    # Filter by path if provided
+    if args.path:
+        filter_path = Path(args.path).resolve()
+        filtered_repos = {}
+        for repo_path, metadata in repos.items():
+            try:
+                repo_resolved = Path(repo_path).resolve()
+                # Include if repo is under the filter path or is the filter path itself
+                if repo_resolved == filter_path or filter_path in repo_resolved.parents:
+                    filtered_repos[repo_path] = metadata
+            except (ValueError, RuntimeError):
+                # Skip paths that can't be resolved
+                continue
+        repos = filtered_repos
     
     # Handle Scanning
     if args.scan:
