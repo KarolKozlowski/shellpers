@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# This file is intended to be sourced. Avoid redeclaring readonly variables.
+[[ -n ${__AGENT_BRIDGE_SH_LOADED:-} ]] && return 0
+readonly __AGENT_BRIDGE_SH_LOADED=1
+
 readonly DEFAULT_SSH_AGENT_SOCKET="${HOME}/.ssh/agent.sock"
 readonly SSH_AGENT_SOCKET="${SSH_AGENT_SOCKET:-$DEFAULT_SSH_AGENT_SOCKET}"
 readonly SSH_AGENT_PIPE="${SSH_AGENT_PIPE:-//./pipe/openssh-ssh-agent}"
@@ -43,7 +47,8 @@ list_agent_bridge_pids() {
                 $1 = ""
                 sub(/^ /, "", $0)
 
-                expected = "socat UNIX-LISTEN:" socket ",fork EXEC:" relay " -ei -s " pipe ",nofork"
+                expected = "socat UNIX-LISTEN:" socket ",fork EXEC:" \
+                    relay " -ei -s " pipe ",nofork"
 
                 if ($0 == expected) {
                     print pid
@@ -66,7 +71,9 @@ start_agent_bridge() {
     rm -f "$SSH_AUTH_SOCK"
 
     (
-        setsid socat "$SOCAT_LISTEN_OPTIONS" EXEC:"$SOCAT_EXEC_TARGET",nofork &
+        setsid socat \
+            "$SOCAT_LISTEN_OPTIONS" \
+            EXEC:"$SOCAT_EXEC_TARGET",nofork &
     ) >/dev/null 2>&1
 }
 
