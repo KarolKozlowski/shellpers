@@ -1,0 +1,93 @@
+#!/bin/sh
+# Common dispatcher for docker-based helper commands.
+# Invoked via a symlink named "<tool>" (runs locally) or "<tool>-<env>" (runs
+# against a remote docker host, if ~/.docker/<env>[.np.dotnot.pl] exists).
+# Add new tools in the case below.
+set -e
+
+domain="np.dotnot.pl"
+self="$(basename "$0")"
+
+# Echoes the docker cert dir for an env name if one exists, else fails.
+resolve_env_dir() {
+  for d in "$HOME/.docker/$1.${domain}" "$HOME/.docker/$1"; do
+    if [ -e "$d" ]; then
+      echo "$d"
+      return 0
+    fi
+  done
+  return 1
+}
+
+app="$self"
+env=""
+cert_dir=""
+
+case "$self" in
+  occ)
+    # occ only exists on the NAS, so it always targets it regardless of suffix.
+    app="occ"
+    env="nas"
+    ;;
+  *-*)
+    # part after the last dash is the candidate env name, e.g. "dtop-nas" -> "nas"
+    candidate_env="${self##*-}"
+    # only treat it as an env suffix if a matching cert dir actually exists
+    candidate_dir="$(resolve_env_dir "$candidate_env" || true)"
+    if [ -n "$candidate_dir" ]; then
+      app="${self%-*}"
+      env="$candidate_env"
+      cert_dir="$candidate_dir"
+    fi
+    ;;
+esac
+
+if [ -n "$env" ]; then
+  # cert_dir is already set for the "<tool>-<env>" case; occ needs it resolved here
+  [ -n "$cert_dir" ] || cert_dir="$(resolve_env_dir "$env")"
+  export DOCKER_HOST="tcp://${env}.${domain}:2376"
+  export DOCKER_TLS_VERIFY=1
+  export DOCKER_CERT_PATH="${cert_dir}/"
+else
+  unset DOCKER_HOST DOCKER_TLS_VERIFY DOCKER_CERT_PATH
+fi
+
+case "$app" in
+  docker)
+    exec /usr/bin/docker "$@"
+    ;;
+
+  occ)
+    exec /usr/bin/docker exec --user www-data -it nextcloud-web-1 php occ "$@"
+    ;;
+
+  dtop)
+    if [ "$env" = "nas" ]; then
+      # the nas docker host has this mirror configured; local ones typically don't
+      image="registry.${domain}/ghcr.io/amir20/dtop"
+    else
+      image="ghcr.io/amir20/dtop"
+    fi
+    exec /usr/bin/docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock "${image}" "$@"
+    ;;
+
+  psql)
+    container="postgres"
+    # allocate a tty only when stdin is one, so piping input still works
+    if [ -t 0 ]; then
+      exec_opts="-it"
+    else
+      exec_opts="-i"
+    fi
+    if [ $# -eq 0 ]; then
+      exec /usr/bin/docker exec ${exec_opts} "${container}" psql -U postgres -d postgres
+    else
+      exec /usr/bin/docker exec ${exec_opts} "${container}" psql -U postgres "$@"
+    fi
+    ;;
+
+  *)
+    echo "docker-multi: unknown command '${app}' (invoked as '${self}')" >&2
+    exit 1
+    ;;
+esac
