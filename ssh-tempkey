@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+
+set -eu
+
+# Default key type and comment; can be overridden via env or arguments.
+KEY_TYPE="${KEY_TYPE:-ed25519}"
+KEY_COMMENT="${KEY_COMMENT:-temporary-deploy-key}"
+
+# Optional: allow passing comment as $1
+if [ "${1-}" != "" ]; then
+  KEY_COMMENT="$1"
+fi
+
+# Create temporary directory for the keypair
+TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/sshkey.XXXXXXXX")" || {
+  echo "Failed to create temp dir" >&2
+  exit 1
+}
+
+cleanup() {
+  # Best-effort shred of private key, then remove dir
+  if [ -f "$TMPDIR/id_key" ]; then
+    # shred may not exist on all systems; ignore failure
+    command -v shred >/dev/null 2>&1 && shred -u "$TMPDIR/id_key" || rm -f "$TMPDIR/id_key"
+  fi
+  rm -f "$TMPDIR/id_key.pub"
+  rmdir "$TMPDIR" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+# Generate keypair non-interactively, no passphrase
+ssh-keygen \
+  -q \
+  -t "$KEY_TYPE" \
+  -N '' \
+  -C "$KEY_COMMENT" \
+  -f "$TMPDIR/id_key"
+
+# Private key -> stdout
+cat "$TMPDIR/id_key"
+
+# Public key -> stderr
+cat "$TMPDIR/id_key.pub" >&2
