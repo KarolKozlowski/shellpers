@@ -62,12 +62,7 @@ case "$app" in
     ;;
 
   dtop)
-    if [ "$env" = "nas" ]; then
-      # the nas docker host has this mirror configured; local ones typically don't
-      image="registry.${domain}/ghcr.io/amir20/dtop"
-    else
-      image="ghcr.io/amir20/dtop"
-    fi
+    image="registry.${domain}/ghcr.io/amir20/dtop"
     exec /usr/bin/docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock "${image}" "$@"
     ;;
 
